@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aviation-weather-ml"
+version = "0.1.0"
+description = "Predict one-hour-ahead aviation flight categories from METAR observations."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "joblib>=1.4",
+  "matplotlib>=3.9",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "requests>=2.32",
+  "scikit-learn>=1.5",
+  "streamlit>=1.37",
+  "torch>=2.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

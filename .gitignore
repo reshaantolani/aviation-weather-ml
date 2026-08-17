@@ -1,0 +1,15 @@
+NEXT_48_HOURS.md
+RESUME_NOTES.md
+SMOKE_TEST_RESULTS.md
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.DS_Store
+
+data/raw/*
+data/processed/*
+
+artifacts/random_forest.joblib
