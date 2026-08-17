@@ -1,57 +1,63 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime, timezone
 
-import math
+import numpy as np
 import pandas as pd
 import requests
 
-from aviation_weather_ml.flight_category import (
-    classify_flight_category,
-)
+from aviation_weather_ml.flight_category import classify_flight_category
 
-AWC_METAR_URL = "https://aviationweather.gov/" "api/data/metar"
+AWC_METAR_URL = "https://aviationweather.gov/api/data/metar"
+CEILING_COVERS = {"BKN", "OVC", "VV"}
 
 
-def fetch_current_metar(
-    icao_id: str,
-) -> dict[str, object]:
+def fetch_current_metar(icao_id: str) -> dict[str, object]:
     normalized = icao_id.strip().upper()
+
+    params = {
+        "ids": normalized,
+        "format": "json",
+    }
+    headers = {
+        "User-Agent": "aviation-weather-ml/0.1 educational-project"
+    }
 
     response = requests.get(
         AWC_METAR_URL,
-        params={
-            "ids": normalized,
-            "format": "json",
-        },
+        params=params,
         timeout=20,
-        headers={"User-Agent": ("aviation-weather-ml/0.1 " "educational-project")},
+        headers=headers,
     )
 
     if response.status_code == 204:
-        raise RuntimeError("No current METAR is available " f"for {normalized}.")
+        raise RuntimeError(
+            f"No current METAR is available for {normalized}."
+        )
 
     response.raise_for_status()
     payload = response.json()
 
     if not payload:
-        raise RuntimeError("AviationWeather.gov returned " "an empty METAR response.")
+        raise RuntimeError(
+            "AviationWeather.gov returned an empty METAR response."
+        )
 
     return payload[0]
 
 
-def _number(
-    payload: dict[str, object],
-    *keys: str,
-) -> float:
+def _number(payload: dict[str, object], *keys: str) -> float:
     for key in keys:
         value = payload.get(key)
+
         if value is None:
             continue
 
+        if isinstance(value, str):
+            value = value.replace("+", "")
+
         try:
-            if isinstance(value, str):
-                value = value.replace("+", "")
             return float(value)
         except (TypeError, ValueError):
             continue
@@ -59,9 +65,7 @@ def _number(
     return math.nan
 
 
-def _ceiling_from_awc(
-    payload: dict[str, object],
-) -> float:
+def _ceiling_from_awc(payload: dict[str, object]) -> float:
     clouds = payload.get("clouds")
     candidates: list[float] = []
 
@@ -73,44 +77,51 @@ def _ceiling_from_awc(
             cover = str(layer.get("cover", "")).upper()
             base = layer.get("base")
 
-            if cover not in {
-                "BKN",
-                "OVC",
-                "VV",
-            }:
+            if cover not in CEILING_COVERS:
                 continue
 
             try:
-                candidates.append(float(base))
+                base_value = float(base)
+                candidates.append(base_value)
             except (TypeError, ValueError):
-                pass
+                continue
 
-    vertical_visibility = _number(
-        payload,
-        "vertVis",
-    )
+    vertical_visibility = _number(payload, "vertVis")
     if not math.isnan(vertical_visibility):
         candidates.append(vertical_visibility)
 
-    if not candidates:
+    if len(candidates) == 0:
         return math.nan
 
     return min(candidates)
 
 
-def awc_metar_to_model_row(
-    payload: dict[str, object],
-) -> pd.DataFrame:
-    station = str(payload.get("icaoId") or payload.get("station") or "UNKNOWN").upper()
+def _celsius_to_fahrenheit(value: float) -> float:
+    if math.isnan(value):
+        return math.nan
 
+    return value * 9 / 5 + 32
+
+
+def _hpa_to_in_hg(value: float) -> float:
+    if math.isnan(value):
+        return math.nan
+
+    return value * 0.0295299830714
+
+
+def awc_metar_to_model_row(payload: dict[str, object]) -> pd.DataFrame:
+    station_value = payload.get("icaoId")
+    if station_value is None:
+        station_value = payload.get("station")
+    if station_value is None:
+        station_value = "UNKNOWN"
+
+    station = str(station_value).upper()
     if len(station) == 4 and station.startswith("K"):
         station = station[1:]
 
-    visibility = _number(
-        payload,
-        "visib",
-        "visibility",
-    )
+    visibility = _number(payload, "visib", "visibility")
     ceiling = _ceiling_from_awc(payload)
 
     current_category = classify_flight_category(
@@ -118,12 +129,13 @@ def awc_metar_to_model_row(
         ceiling,
     )
 
-    category_index = {
+    category_indexes = {
         "VFR": 0,
         "MVFR": 1,
         "IFR": 2,
         "LIFR": 3,
-    }[current_category]
+    }
+    category_index = category_indexes[current_category]
 
     observation_time = payload.get("obsTime")
     if isinstance(observation_time, (int, float)):
@@ -137,15 +149,16 @@ def awc_metar_to_model_row(
     hour = observed_at.hour
     month = observed_at.month
 
-    import numpy as np
-
     temp_c = _number(payload, "temp")
     dewp_c = _number(payload, "dewp")
     altim_hpa = _number(payload, "altim")
 
-    temp_f = temp_c * 9 / 5 + 32 if not math.isnan(temp_c) else math.nan
-    dewp_f = dewp_c * 9 / 5 + 32 if not math.isnan(dewp_c) else math.nan
-    altim_in_hg = altim_hpa * 0.0295299830714 if not math.isnan(altim_hpa) else math.nan
+    temp_f = _celsius_to_fahrenheit(temp_c)
+    dewp_f = _celsius_to_fahrenheit(dewp_c)
+    altim_in_hg = _hpa_to_in_hg(altim_hpa)
+
+    hour_angle = 2 * np.pi * hour / 24
+    month_angle = 2 * np.pi * month / 12
 
     row = {
         "tmpf": temp_f,
@@ -155,11 +168,11 @@ def awc_metar_to_model_row(
         "vsby": visibility,
         "alti": altim_in_hg,
         "ceiling_ft": ceiling,
-        "hour_sin": np.sin(2 * np.pi * hour / 24),
-        "hour_cos": np.cos(2 * np.pi * hour / 24),
-        "month_sin": np.sin(2 * np.pi * month / 12),
-        "month_cos": np.cos(2 * np.pi * month / 12),
-        "current_category_index": (category_index),
+        "hour_sin": np.sin(hour_angle),
+        "hour_cos": np.cos(hour_angle),
+        "month_sin": np.sin(month_angle),
+        "month_cos": np.cos(month_angle),
+        "current_category_index": category_index,
         "station": station,
     }
 

@@ -12,41 +12,38 @@ from sklearn.metrics import (
     f1_score,
 )
 
-from aviation_weather_ml.config import (
-    FLIGHT_CATEGORIES,
-)
+from aviation_weather_ml.config import FLIGHT_CATEGORIES
 
 
 def calculate_metrics(
     truth: np.ndarray,
     predictions: np.ndarray,
 ) -> dict[str, object]:
-    return {
-        "accuracy": float(
-            accuracy_score(
-                truth,
-                predictions,
-            )
-        ),
-        "macro_f1": float(
-            f1_score(
-                truth,
-                predictions,
-                average="macro",
-                zero_division=0,
-            )
-        ),
-        "classification_report": (
-            classification_report(
-                truth,
-                predictions,
-                labels=list(range(len(FLIGHT_CATEGORIES))),
-                target_names=(FLIGHT_CATEGORIES),
-                output_dict=True,
-                zero_division=0,
-            )
-        ),
+    accuracy = accuracy_score(truth, predictions)
+    macro_f1 = f1_score(
+        truth,
+        predictions,
+        average="macro",
+        zero_division=0,
+    )
+
+    labels = list(range(len(FLIGHT_CATEGORIES)))
+    report = classification_report(
+        truth,
+        predictions,
+        labels=labels,
+        target_names=FLIGHT_CATEGORIES,
+        output_dict=True,
+        zero_division=0,
+    )
+
+    metrics = {
+        "accuracy": float(accuracy),
+        "macro_f1": float(macro_f1),
+        "classification_report": report,
     }
+
+    return metrics
 
 
 def save_confusion_matrix(
@@ -64,12 +61,10 @@ def save_confusion_matrix(
         ax=axis,
         colorbar=False,
     )
+
     axis.set_title(title)
     figure.tight_layout()
-    figure.savefig(
-        output_path,
-        dpi=160,
-    )
+    figure.savefig(output_path, dpi=160)
     plt.close(figure)
 
 
@@ -77,9 +72,5 @@ def save_metrics(
     metrics: dict[str, object],
     output_path: Path,
 ) -> None:
-    output_path.write_text(
-        json.dumps(
-            metrics,
-            indent=2,
-        )
-    )
+    text = json.dumps(metrics, indent=2)
+    output_path.write_text(text)

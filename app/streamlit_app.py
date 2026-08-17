@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import joblib
 import pandas as pd
@@ -22,34 +22,30 @@ from aviation_weather_ml.live_weather import (  # noqa: E402
 )
 
 st.set_page_config(
-    page_title=("Aviation Weather ML"),
+    page_title="Aviation Weather ML",
     page_icon="✈",
     layout="wide",
 )
 
 st.title("Aviation Weather Flight Category Predictor")
 st.caption(
-    "Educational ML project. Predictions are not "
-    "an official weather briefing and must not be "
-    "used for flight-safety decisions."
+    "Educational ML project. Predictions are not an official weather "
+    "briefing and must not be used for flight-safety decisions."
 )
 
 model_path = ARTIFACT_DIR / "random_forest.joblib"
 
 if not model_path.exists():
-    st.error("Train the models first. Expected artifact: " f"{model_path}")
+    st.error(f"Train the models first. Expected artifact: {model_path}")
     st.stop()
 
 model = joblib.load(model_path)
 
-icao_id = (
-    st.text_input(
-        "Airport ICAO identifier",
-        value="KORD",
-    )
-    .strip()
-    .upper()
+icao_id = st.text_input(
+    "Airport ICAO identifier",
+    value="KORD",
 )
+icao_id = icao_id.strip().upper()
 
 if st.button("Fetch METAR and predict"):
     try:
@@ -57,9 +53,15 @@ if st.button("Fetch METAR and predict"):
         feature_row = awc_metar_to_model_row(payload)
         model_features = feature_row[MODEL_FEATURES]
 
-        prediction = int(model.predict(model_features)[0])
-        raw_probabilities = model.predict_proba(model_features)[0]
-        model_classes = model.named_steps["classifier"].classes_
+        prediction_values = model.predict(model_features)
+        prediction = int(prediction_values[0])
+
+        probability_values = model.predict_proba(model_features)
+        raw_probabilities = probability_values[0]
+
+        classifier = model.named_steps["classifier"]
+        model_classes = classifier.classes_
+
         probabilities = [0.0] * len(FLIGHT_CATEGORIES)
         for class_index, probability in zip(
             model_classes,
@@ -69,41 +71,29 @@ if st.button("Fetch METAR and predict"):
 
         predicted_category = FLIGHT_CATEGORIES[prediction]
 
-        first_column, second_column = st.columns(2)
-        first_column.metric(
-            "Current category",
-            FLIGHT_CATEGORIES[int(feature_row["current_category_index"].iloc[0])],
-        )
-        second_column.metric(
-            "Predicted +1 hour",
-            predicted_category,
-        )
+        current_index = feature_row["current_category_index"].iloc[0]
+        current_category = FLIGHT_CATEGORIES[int(current_index)]
 
-        probability_frame = pd.DataFrame(
-            {
-                "category": (FLIGHT_CATEGORIES),
-                "probability": (probabilities),
-            }
-        ).set_index("category")
+        first_column, second_column = st.columns(2)
+        first_column.metric("Current category", current_category)
+        second_column.metric("Predicted +1 hour", predicted_category)
+
+        probability_data = {
+            "category": FLIGHT_CATEGORIES,
+            "probability": probabilities,
+        }
+        probability_frame = pd.DataFrame(probability_data)
+        probability_frame = probability_frame.set_index("category")
 
         st.subheader("Model probabilities")
         st.bar_chart(probability_frame)
 
         st.subheader("Model input")
-        st.dataframe(
-            feature_row,
-            use_container_width=True,
-        )
+        st.dataframe(feature_row, use_container_width=True)
 
         st.subheader("Raw METAR")
-        st.code(
-            str(
-                payload.get(
-                    "rawOb",
-                    payload,
-                )
-            )
-        )
+        raw_metar = payload.get("rawOb", payload)
+        st.code(str(raw_metar))
 
     except Exception as error:
         st.exception(error)

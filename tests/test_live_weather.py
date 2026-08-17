@@ -1,8 +1,6 @@
 import math
 
-from aviation_weather_ml.live_weather import (
-    awc_metar_to_model_row,
-)
+from aviation_weather_ml.live_weather import awc_metar_to_model_row
 
 
 def test_awc_units_match_iem_training_units() -> None:
@@ -25,12 +23,14 @@ def test_awc_units_match_iem_training_units() -> None:
 
     row = awc_metar_to_model_row(payload)
 
-    assert row["station"].iloc[0] == "ORD"
-    assert row["tmpf"].iloc[0] == 50.0
-    assert row["dwpf"].iloc[0] == 32.0
-    assert math.isclose(
-        row["alti"].iloc[0],
-        29.9213,
-        rel_tol=1e-4,
-    )
-    assert row["vsby"].iloc[0] == 10.0
+    station = row["station"].iloc[0]
+    temperature = row["tmpf"].iloc[0]
+    dew_point = row["dwpf"].iloc[0]
+    altimeter = row["alti"].iloc[0]
+    visibility = row["vsby"].iloc[0]
+
+    assert station == "ORD"
+    assert temperature == 50.0
+    assert dew_point == 32.0
+    assert math.isclose(altimeter, 29.9213, rel_tol=1e-4)
+    assert visibility == 10.0

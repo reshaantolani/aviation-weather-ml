@@ -3,27 +3,27 @@ from __future__ import annotations
 import argparse
 from datetime import date
 
-from aviation_weather_ml.download_iem import (
-    download_iem_history,
-)
+from aviation_weather_ml.download_iem import download_iem_history
 
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
+    default_stations = [
+        "ORD",
+        "SFO",
+        "LAX",
+        "DEN",
+        "DFW",
+        "JFK",
+        "SEA",
+        "ATL",
+    ]
+
     parser.add_argument(
         "--stations",
         nargs="+",
-        default=[
-            "ORD",
-            "SFO",
-            "LAX",
-            "DEN",
-            "DFW",
-            "JFK",
-            "SEA",
-            "ATL",
-        ],
+        default=default_stations,
     )
     parser.add_argument(
         "--start",

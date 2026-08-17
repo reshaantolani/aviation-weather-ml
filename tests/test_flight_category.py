@@ -9,43 +9,23 @@ from aviation_weather_ml.flight_category import (
 
 
 def test_vfr_category() -> None:
-    assert (
-        classify_flight_category(
-            10,
-            5000,
-        )
-        == "VFR"
-    )
+    category = classify_flight_category(10, 5000)
+    assert category == "VFR"
 
 
 def test_visibility_can_lower_category() -> None:
-    assert (
-        classify_flight_category(
-            2.5,
-            5000,
-        )
-        == "IFR"
-    )
+    category = classify_flight_category(2.5, 5000)
+    assert category == "IFR"
 
 
 def test_lifr_category() -> None:
-    assert (
-        classify_flight_category(
-            10,
-            400,
-        )
-        == "LIFR"
-    )
+    category = classify_flight_category(10, 400)
+    assert category == "LIFR"
 
 
 def test_missing_ceiling_can_be_vfr() -> None:
-    assert (
-        classify_flight_category(
-            10,
-            math.nan,
-        )
-        == "VFR"
-    )
+    category = classify_flight_category(10, math.nan)
+    assert category == "VFR"
 
 
 def test_lowest_broken_or_overcast_is_ceiling() -> None:
@@ -60,14 +40,10 @@ def test_lowest_broken_or_overcast_is_ceiling() -> None:
         }
     )
 
-    assert find_ceiling_ft(row) == 2200
+    ceiling = find_ceiling_ft(row)
+    assert ceiling == 2200
 
 
 def test_missing_visibility_and_ceiling_is_unknown() -> None:
-    assert (
-        classify_flight_category(
-            math.nan,
-            math.nan,
-        )
-        is None
-    )
+    category = classify_flight_category(math.nan, math.nan)
+    assert category is None

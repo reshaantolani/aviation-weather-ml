@@ -1,18 +1,12 @@
 import pandas as pd
 
-from aviation_weather_ml.features import (
-    prepare_hourly_dataset,
-)
+from aviation_weather_ml.features import prepare_hourly_dataset
 
 
 def test_target_is_next_hour_category() -> None:
     raw = pd.DataFrame(
         {
-            "station": [
-                "ORD",
-                "ORD",
-                "ORD",
-            ],
+            "station": ["ORD", "ORD", "ORD"],
             "valid": [
                 "2025-01-01T00:50:00Z",
                 "2025-01-01T01:50:00Z",
@@ -24,24 +18,18 @@ def test_target_is_next_hour_category() -> None:
             "sknt": [10, 10, 10],
             "vsby": [10, 4, 0.5],
             "alti": [30, 30, 30],
-            "skyc1": [
-                "CLR",
-                "BKN",
-                "OVC",
-            ],
-            "skyl1": [
-                None,
-                2000,
-                300,
-            ],
+            "skyc1": ["CLR", "BKN", "OVC"],
+            "skyl1": [None, 2000, 300],
         }
     )
 
     prepared = prepare_hourly_dataset(raw)
 
-    assert list(prepared["flight_category"]) == ["VFR", "MVFR"]
+    categories = list(prepared["flight_category"])
+    targets = list(prepared["target_category"])
 
-    assert list(prepared["target_category"]) == ["MVFR", "LIFR"]
+    assert categories == ["VFR", "MVFR"]
+    assert targets == ["MVFR", "LIFR"]
 
 
 def test_missing_hour_is_not_labeled_vfr() -> None:

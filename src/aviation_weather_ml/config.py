@@ -24,11 +24,13 @@ FLIGHT_CATEGORIES = [
     "LIFR",
 ]
 
-CATEGORY_TO_INDEX = {
-    category: index for index, category in enumerate(FLIGHT_CATEGORIES)
-}
+CATEGORY_TO_INDEX = {}
+for index, category in enumerate(FLIGHT_CATEGORIES):
+    CATEGORY_TO_INDEX[category] = index
 
-INDEX_TO_CATEGORY = {index: category for category, index in CATEGORY_TO_INDEX.items()}
+INDEX_TO_CATEGORY = {}
+for category, index in CATEGORY_TO_INDEX.items():
+    INDEX_TO_CATEGORY[index] = category
 
 NUMERIC_FEATURES = [
     "tmpf",
@@ -45,8 +47,6 @@ NUMERIC_FEATURES = [
     "current_category_index",
 ]
 
-CATEGORICAL_FEATURES = [
-    "station",
-]
+CATEGORICAL_FEATURES = ["station"]
 
 MODEL_FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
